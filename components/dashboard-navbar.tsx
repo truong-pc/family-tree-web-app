@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react"
 import { api } from "@/lib/api"
 import { UserProfileDialog } from "@/components/user-profile-dialog"
 import { UserChangePasswordDialog } from "@/components/user-change-password-dialog"
+import { Button } from "./ui/button"
 
 export default function DashboardNavbar() {
   const router = useRouter()
@@ -47,67 +48,84 @@ export default function DashboardNavbar() {
   }
 
   return (
-    <nav className="border-b border-border bg-card ">
+    <nav className="border-b border-border bg-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
         <div className="flex justify-between items-center">
           {/* Logo and Brand */}
-          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
+          <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2 hover:opacity-80 transition">
             <img src="/icon.png" alt="Logo" className="w-10 h-10 object-contain" />
             <span className="font-bold text-2xl text-primary">Gia Phả</span>
           </Link>
 
           {/* Navigation Links */}
-          <div className="flex items-center">
-            <Link href="/dashboard" className="text-foreground hover:text-primary transition font-medium">
-              Trang Chủ
-            </Link>
-            
-            {/* My Account Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary transition"
-              >
-                <span className="text-foreground">Tài Khoản</span>
-              </button>
+          <div className="flex items-center gap-4">
+            {user ? (
+              /* My Account Dropdown - When logged in */
+              <>
+                <Link href="/dashboard" className="text-foreground hover:text-primary transition font-medium">
+                  Trang Chủ
+                </Link>
+                <div className="relative" ref={dropdownRef}>
+                  <Button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center gap-2 px-3 py-2"
+                  >
+                    Tài Khoản
+                  </Button>
 
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg">
-                  <div className="p-2">
-                    <p className="px-4 py-2 text-sm text-muted-foreground border-b border-border">{user?.full_name || user?.email}</p>
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false)
-                        setIsProfileOpen(true)
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-secondary rounded text-foreground transition"
-                    >
-                      Thông Tin Tài Khoản
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false)
-                        setIsChangePasswordOpen(true)
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-secondary rounded text-foreground transition"
-                    >
-                      Đổi Mật Khẩu
-                    </button>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 hover:bg-destructive/10 text-destructive rounded transition"
-                    >
-                      Đăng Xuất
-                    </button>
-                  </div>
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-50 bg-card border border-border rounded-lg shadow-lg z-50">
+                      <div className="p-2">
+                        <p className="px-4 py-2 text-sm text-muted-foreground border-b border-border">{user?.full_name || user?.email}</p>
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false)
+                            setIsProfileOpen(true)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-secondary rounded text-foreground transition"
+                        >
+                          Thông Tin Tài Khoản
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false)
+                            setIsChangePasswordOpen(true)
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-secondary rounded text-foreground transition"
+                        >
+                          Đổi Mật Khẩu
+                        </button>
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2 hover:bg-destructive/10 text-destructive rounded transition"
+                        >
+                          Đăng Xuất
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              /* Login/Register buttons - When not logged in */
+              <>
+                <Link href="/login">
+                  <Button variant="outline">Đăng Nhập</Button>
+                </Link>
+                <Link href="/register">
+                  <Button>Đăng Ký</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
-      <UserProfileDialog open={isProfileOpen} onOpenChange={setIsProfileOpen} />
-      <UserChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
+      {user && (
+        <>
+          <UserProfileDialog open={isProfileOpen} onOpenChange={setIsProfileOpen} />
+          <UserChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
+        </>
+      )}
     </nav>
   )
 }
