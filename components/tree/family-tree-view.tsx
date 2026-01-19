@@ -1,152 +1,169 @@
-"use client"
+"use client";
 
-import React, { useState, useEffect, useRef } from "react"
-import { Search, Plus, X, Users, ArrowUpDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { api } from "@/lib/api"
-import Image from "next/image"
-import FamilyTreeChart from "./family-tree-chart"
-import PersonSidebar from "./person-sidebar"
-import AddPersonModal from "./add-person-modal"
-import AddRelationshipModal from "./add-relationship-modal"
-import DelRelationshipModal from "./del-relationship-modal"
+import React, { useState, useEffect, useRef } from "react";
+import { Search, Plus, X, Users, ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from "@/lib/api";
+import Image from "next/image";
+import FamilyTreeChart from "./family-tree-chart";
+import PersonSidebar from "./person-sidebar";
+import AddPersonModal from "./add-person-modal";
+import AddRelationshipModal from "./add-relationship-modal";
+import DelRelationshipModal from "./del-relationship-modal";
 
 export interface Person {
-  personId: number
-  ownerId: string
-  chartId: string
-  name: string
-  gender: "M" | "F" | "O"
-  level: number
-  dob?: string | null
-  dod?: string | null
-  description?: string | null
-  photoUrl?: string | null
+  personId: number;
+  ownerId: string;
+  chartId: string;
+  name: string;
+  gender: "M" | "F" | "O";
+  level: number;
+  dob?: string | null;
+  dod?: string | null;
+  description?: string | null;
+  photoUrl?: string | null;
 }
 
 export interface FamilyTreeData {
-  nodes: Array<{ id: string; gender: string; [key: string]: any }>
-  links: Array<{ source: string; target: string; [key: string]: any }>
+  nodes: Array<{ id: string; gender: string; [key: string]: any }>;
+  links: Array<{ source: string; target: string; [key: string]: any }>;
 }
 
 interface FamilyTreeViewProps {
-  chartId: string
-  readOnly?: boolean
+  chartId: string;
+  readOnly?: boolean;
 }
 
-export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTreeViewProps) {
-  const [people, setPeople] = useState<Person[]>([])
-  const [familyTreeData, setFamilyTreeData] = useState<FamilyTreeData>({ nodes: [], links: [] })
-  const [searchTerm, setSearchTerm] = useState("")
-  const [searchResults, setSearchResults] = useState<Person[]>([])
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showAddPersonModal, setShowAddPersonModal] = useState(false)
-  const [showAddRelationshipModal, setShowAddRelationshipModal] = useState(false)
-  const [showDelRelationshipModal, setShowDelRelationshipModal] = useState(false)
-  const [focusedPerson, setFocusedPerson] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [levelFilter, setLevelFilter] = useState<string>("")
-  const sidebarRef = useRef<HTMLDivElement>(null)
+export default function FamilyTreeView({
+  chartId,
+  readOnly = false,
+}: FamilyTreeViewProps) {
+  const [people, setPeople] = useState<Person[]>([]);
+  const [familyTreeData, setFamilyTreeData] = useState<FamilyTreeData>({
+    nodes: [],
+    links: [],
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<Person[]>([]);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showAddPersonModal, setShowAddPersonModal] = useState(false);
+  const [showAddRelationshipModal, setShowAddRelationshipModal] =
+    useState(false);
+  const [showDelRelationshipModal, setShowDelRelationshipModal] =
+    useState(false);
+  const [focusedPerson, setFocusedPerson] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [levelFilter, setLevelFilter] = useState<string>("");
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Update selectedPerson when people data changes (to reflect edits)
   useEffect(() => {
     if (selectedPerson && people.length > 0) {
-      const updatedPerson = people.find(p => p.personId === selectedPerson.personId)
+      const updatedPerson = people.find(
+        (p) => p.personId === selectedPerson.personId,
+      );
       if (updatedPerson) {
-        setSelectedPerson(updatedPerson)
+        setSelectedPerson(updatedPerson);
       }
     }
-  }, [people])
+  }, [people]);
 
   // Handle click outside sidebar to close it
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (sidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+      if (
+        sidebarOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
         // Check if click is on a tree node (SVG rect)
-        const target = event.target as Element
-        if (target.tagName === 'rect' || target.closest('svg')) {
+        const target = event.target as Element;
+        if (target.tagName === "rect" || target.closest("svg")) {
           // Don't close sidebar when clicking on tree nodes
-          return
+          return;
         }
 
         // Check if any portal content is open (Select, Dropdown, etc.)
         // If so, the click outside likely just meant to close that portal, not the sidebar
-        const isPortalOpen = 
-          document.querySelector('[data-slot="select-content"][data-state="open"]') ||
-          document.querySelector('[role="menu"][data-state="open"]')
-        
-        if (isPortalOpen) {
-          return
-        }
-        
-        setSidebarOpen(false)
-      }
-    }
+        const isPortalOpen =
+          document.querySelector(
+            '[data-slot="select-content"][data-state="open"]',
+          ) || document.querySelector('[role="menu"][data-state="open"]');
 
-    document.addEventListener('pointerdown', handleClickOutside)
-    return () => document.removeEventListener('pointerdown', handleClickOutside)
-  }, [sidebarOpen])
+        if (isPortalOpen) {
+          return;
+        }
+
+        setSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () =>
+      document.removeEventListener("pointerdown", handleClickOutside);
+  }, [sidebarOpen]);
 
   // Fetch all people and family tree data
   const fetchData = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
       // Fetch tree data
-      let treeData: FamilyTreeData
+      let treeData: FamilyTreeData;
       if (readOnly) {
-        treeData = await api.getPublishedTree(chartId)
+        treeData = await api.getPublishedTree(chartId);
       } else {
-        if (!token) throw new Error("Authentication required")
-        treeData = await api.getChartTree(token, chartId)
+        if (!token) throw new Error("Authentication required");
+        treeData = await api.getChartTree(token, chartId);
       }
-      
+
       // Ensure treeData has valid structure
-      const rawNodes = Array.isArray(treeData?.nodes) ? treeData.nodes : []
-      const rawLinks = Array.isArray(treeData?.links) ? treeData.links : []
+      const rawNodes = Array.isArray(treeData?.nodes) ? treeData.nodes : [];
+      const rawLinks = Array.isArray(treeData?.links) ? treeData.links : [];
 
       // Create a map of personId to name for link transformation
-      const personIdToName = new Map<number, string>()
+      const personIdToName = new Map<number, string>();
       rawNodes.forEach((node: any) => {
         if (node.personId && node.name) {
-          personIdToName.set(node.personId, node.name)
+          personIdToName.set(node.personId, node.name);
         }
-      })
+      });
 
       // Transform nodes to have 'id' field (required by chart component)
       const transformedNodes = rawNodes.map((node: any) => ({
         ...node,
         id: node.name, // Chart component expects 'id' field
-      }))
+      }));
 
       // Transform links: convert personId to person names
       const transformedLinks = rawLinks.map((link: any) => ({
         source: personIdToName.get(link.source) || String(link.source),
         target: personIdToName.get(link.target) || String(link.target),
-      }))
+      }));
 
       const validTreeData: FamilyTreeData = {
         nodes: transformedNodes,
         links: transformedLinks,
-      }
-      setFamilyTreeData(validTreeData)
+      };
+      setFamilyTreeData(validTreeData);
 
       // Fetch persons list
       if (!readOnly && token) {
-        const personsResponse = await api.getChartPersons(token, chartId)
+        const personsResponse = await api.getChartPersons(token, chartId);
         // Handle both direct array and { data: [...] } wrapper
-        const personsData = Array.isArray(personsResponse) 
-          ? personsResponse 
-          : Array.isArray(personsResponse?.data) 
-            ? personsResponse.data 
-            : []
-        setPeople(personsData)
+        const personsData = Array.isArray(personsResponse)
+          ? personsResponse
+          : Array.isArray(personsResponse?.data)
+            ? personsResponse.data
+            : [];
+        setPeople(personsData);
       } else {
         // In read-only mode, extract people from nodes
         const peopleData: Person[] = rawNodes.map((node: any) => ({
@@ -154,73 +171,123 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
           ownerId: node.ownerId || "",
           chartId: chartId,
           name: node.name || "Unknown",
-          gender: node.gender === "male" || node.gender === "M" ? "M" : node.gender === "female" || node.gender === "F" ? "F" : "O",
+          gender:
+            node.gender === "male" || node.gender === "M"
+              ? "M"
+              : node.gender === "female" || node.gender === "F"
+                ? "F"
+                : "O",
           level: node.level || 0,
           dob: node.dob || null,
           dod: node.dod || null,
           description: node.desc || node.description || null,
           photoUrl: node.photoUrl || null,
-        }))
-        setPeople(peopleData)
+        }));
+        setPeople(peopleData);
       }
     } catch (error: any) {
-      console.error("Error fetching data:", error)
-      setError(error.message || "Failed to load family tree data. Please check if the server is running.")
+      console.error("Error fetching data:", error);
+      setError(
+        error.message ||
+          "Failed to load family tree data. Please check if the server is running.",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Search for people (frontend filtering)
   const handleSearch = (term: string) => {
-    setSearchTerm(term)
+    setSearchTerm(term);
     if (term.trim()) {
       const filtered = people.filter((person) =>
-        person.name.toLowerCase().includes(term.toLowerCase())
-      )
-      setSearchResults(filtered)
+        person.name.toLowerCase().includes(term.toLowerCase()),
+      );
+      setSearchResults(filtered);
     } else {
-      setSearchResults([])
-      setFocusedPerson(null)
+      setSearchResults([]);
+      setFocusedPerson(null);
     }
-  }
+  };
 
   // Clear search
   const clearSearch = () => {
-    setSearchTerm("")
-    setSearchResults([])
-    setFocusedPerson(null)
-  }
+    setSearchTerm("");
+    setSearchResults([]);
+    setFocusedPerson(null);
+  };
 
   // Handle node click in chart
   const handleNodeClick = (personName: string) => {
-    const person = people.find((p) => p.name === personName)
+    const person = people.find((p) => p.name === personName);
     if (person) {
-      setSelectedPerson(person)
-      setSidebarOpen(true)
+      setSelectedPerson(person);
+      setSidebarOpen(true);
     }
-  }
+  };
+
+  // Get all descendants of a person (children, grandchildren, etc.)
+  const getDescendants = (person: Person): Person[] => {
+    const descendants: Person[] = [];
+    const personName = person.name;
+
+    // Find direct children from links
+    const childrenNames = familyTreeData.links
+      .filter((link) => link.source === personName)
+      .map((link) => link.target);
+
+    const children = people.filter((p) => childrenNames.includes(p.name));
+
+    // Add children and recursively get their descendants
+    children.forEach((child) => {
+      descendants.push(child);
+      const childDescendants = getDescendants(child);
+      descendants.push(...childDescendants);
+    });
+
+    return descendants;
+  };
+
+  // Group descendants by level relative to selected person
+  const getDescendantsByLevel = (person: Person): Map<number, Person[]> => {
+    const descendants = getDescendants(person);
+    const levelMap = new Map<number, Person[]>();
+
+    descendants.forEach((descendant) => {
+      const relativeLevel = descendant.level - person.level;
+      if (!levelMap.has(relativeLevel)) {
+        levelMap.set(relativeLevel, []);
+      }
+      levelMap.get(relativeLevel)!.push(descendant);
+    });
+
+    return levelMap;
+  };
 
   // Handle search result click
   const handleSearchResultClick = (person: Person) => {
-    setFocusedPerson(person.name)
-    setSearchTerm(person.name)
-    setSearchResults([])
-  }
+    setFocusedPerson(person.name);
+    setSearchTerm(person.name);
+    setSearchResults([]);
+  };
 
   // Get person color based on gender and relationships
   const getPersonColor = (person: Person) => {
     const hasRelationships = familyTreeData.links.some(
-      (link) => link.source === person.name || link.target === person.name
-    )
+      (link) => link.source === person.name || link.target === person.name,
+    );
 
-    if (!hasRelationships) return "#FEF3C7" // light yellow
-    return person.gender === "M" ? "#DBEAFE" : person.gender === "F" ? "#FCE7F3" : "#E5E7EB" // blue, pink, or gray
-  }
+    if (!hasRelationships) return "#FEF3C7"; // light yellow
+    return person.gender === "M"
+      ? "#DBEAFE"
+      : person.gender === "F"
+        ? "#FCE7F3"
+        : "#E5E7EB"; // blue, pink, or gray
+  };
 
   useEffect(() => {
-    fetchData()
-  }, [chartId, readOnly])
+    fetchData();
+  }, [chartId, readOnly]);
 
   if (loading) {
     return (
@@ -230,7 +297,7 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
           <p className="text-gray-600">Loading family tree...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -240,12 +307,14 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
           <div className="text-red-500 mb-4">
             <Users className="h-16 w-16 mx-auto mb-4" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Connection Error</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Connection Error
+          </h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={fetchData}>Try Again</Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -256,7 +325,10 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
           <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
             <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center py-3 sm:py-4 space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto">
-                <Button onClick={() => setShowAddPersonModal(true)} className="flex-1 sm:flex-none">
+                <Button
+                  onClick={() => setShowAddPersonModal(true)}
+                  className="flex-1 sm:flex-none"
+                >
                   <Plus className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Add Person</span>
                   <span className="sm:hidden">Add</span>
@@ -291,23 +363,38 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
             <Card className="mb-2 sm:mb-8 gap-2">
               <CardHeader className="pb-1 sm:pb-3 px-2 sm:px-6 space-y-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg sm:text-xl">Family Tree Visualization</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">
+                    Family Tree Visualization
+                  </CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      if (typeof window !== 'undefined' && (window as any).familyTreeResetZoom) {
-                        (window as any).familyTreeResetZoom()
+                      if (
+                        typeof window !== "undefined" &&
+                        (window as any).familyTreeResetZoom
+                      ) {
+                        (window as any).familyTreeResetZoom();
                       }
                     }}
                     className="text-gray-500 hover:text-gray-700"
                     title="Reset zoom"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                      <path d="M21 3v5h-5"/>
-                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                      <path d="M3 21v-5h5"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                      <path d="M21 3v5h-5" />
+                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                      <path d="M3 21v-5h5" />
                     </svg>
                   </Button>
                 </div>
@@ -349,10 +436,20 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{person.name}</div>
+                            <div className="font-medium truncate">
+                              {person.name}
+                            </div>
                             <div className="text-sm text-gray-500 flex justify-between">
-                              <span>{person.gender === "M" ? "Male" : person.gender === "F" ? "Female" : "Other"}</span>
-                              <span className="text-gray-400">Level {person.level}</span>
+                              <span>
+                                {person.gender === "M"
+                                  ? "Male"
+                                  : person.gender === "F"
+                                    ? "Female"
+                                    : "Other"}
+                              </span>
+                              <span className="text-gray-400">
+                                Level {person.level}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -367,118 +464,147 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
                   onNodeClick={handleNodeClick}
                   focusedPerson={focusedPerson}
                   getPersonColor={(name: string) => {
-                    const person = people.find((p) => p.name === name)
-                    return person ? getPersonColor(person) : "#F3F4F6"
+                    const person = people.find((p) => p.name === name);
+                    return person ? getPersonColor(person) : "#F3F4F6";
                   }}
                   onResetZoom={() => {}}
                 />
               </CardContent>
             </Card>
 
-            {/* People List */}
+            {/* Descendants List */}
             <Card>
               <CardHeader className="pb-2 sm:pb-6 px-2 sm:px-6">
                 <div className="flex flex-col space-y-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg sm:text-xl">Family Members ({people.length})</CardTitle>
-                    <div className="flex items-center space-x-2">
-                      <label className="text-sm text-gray-600">Số đời:</label>
-                      <div className="relative">
-                        <Input
-                          type="text"
-                          placeholder="Nhập số đời"
-                          value={levelFilter}
-                          onChange={(e) => {
-                            const value = e.target.value
-                            setLevelFilter(value)
-                            if (value && parseInt(value) <= 0) {
-                              // setLevelError("Số đời phải lớn hơn 0")
-                            } else {
-                              // setLevelError(null)
-                            }
-                          }}
-                          className="w-32 h-9 pr-8"
-                        />
-                        {levelFilter && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setLevelFilter("")
-                              // setLevelError(null)
-                            }}
-                            className="absolute right-0 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
-                          >
-                            <X className="h-4 w-4 text-gray-400" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                    <CardTitle className="text-lg sm:text-xl">
+                      {selectedPerson
+                        ? `Descendants of ${selectedPerson.name}`
+                        : "Select a person to view descendants"}
+                    </CardTitle>
+                    {selectedPerson && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedPerson(null)}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-2 sm:p-6">
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3">
-                  {[...people]
-                    .filter((person) => {
-                      if (!levelFilter) return true
-                      const filterLevel = parseInt(levelFilter)
-                      return person.level === filterLevel
-                    })
-                    .map((person) => (
-                    <div
-                      key={person.personId}
-                      className="p-3 sm:p-4 rounded-lg border cursor-pointer hover:shadow-md transition-shadow flex"
-                      style={{ backgroundColor: getPersonColor(person) }}
-                      onClick={() => {
-                        setSelectedPerson(person)
-                        setSidebarOpen(true)
-                      }}
-                    >
-                      {/* Avatar - 3/10 width */}
-                      <div className="w-3/10 flex-shrink-0 mr-1 sm:mr-2">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-white bg-gray-200">
-                          <Image
-                            src={person.photoUrl || "/placeholder-user.jpg"}
-                            alt={person.name || "Avatar"}
-                            width={48}
-                            height={48}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
-                      {/* Info - 7/10 width */}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm sm:text-base truncate" style={{ direction: 'rtl', textAlign: 'left' }}>{person.name}</div>
-                        <div className="text-xs sm:text-sm text-gray-600 flex justify-between">
-                          <span>{person.gender === "M" ? "Male" : person.gender === "F" ? "Female" : "Other"}</span>
-                          <span className="text-gray-500">Level {person.level}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {selectedPerson ? (
+                  (() => {
+                    const descendantsByLevel =
+                      getDescendantsByLevel(selectedPerson);
+                    const sortedLevels = Array.from(
+                      descendantsByLevel.keys(),
+                    ).sort((a, b) => a - b);
 
-                {/* Empty state */}
-                {people.filter((person) => {
-                  if (!levelFilter ) return true
-                  const filterLevel = parseInt(levelFilter)
-                  return person.level === filterLevel
-                }).length === 0 && (
+                    if (sortedLevels.length === 0) {
+                      return (
+                        <div className="text-center py-8 sm:py-12">
+                          <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            No descendants found
+                          </h3>
+                          <p className="text-gray-600">
+                            {selectedPerson.name} has no descendants in the
+                            family tree.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-6">
+                        {sortedLevels.map((relativeLevel) => {
+                          const descendantsAtLevel =
+                            descendantsByLevel.get(relativeLevel) || [];
+                          const generationLabel = `Generation ${relativeLevel - selectedPerson.level + 1}`;
+
+                          return (
+                            <div
+                              key={relativeLevel}
+                              className="border-l-4 border-blue-500 pl-3 sm:pl-4"
+                            >
+                              <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-3">
+                                {generationLabel} ({descendantsAtLevel.length})
+                              </h3>
+                              <div className="flex flex-wrap gap-2 sm:gap-3">
+                                {descendantsAtLevel.map((person) => (
+                                  <div
+                                    key={person.personId}
+                                    className="p-3 sm:p-4 rounded-lg border cursor-pointer hover:shadow-md transition-shadow flex w-full sm:w-[calc(50%-0.5rem)] md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-0.875rem)] xl:w-[calc(20%-1rem)]"
+                                    style={{
+                                      backgroundColor: getPersonColor(person),
+                                    }}
+                                    onClick={() => {
+                                      setSelectedPerson(person);
+                                      setSidebarOpen(true);
+                                    }}
+                                  >
+                                    {/* Avatar */}
+                                    <div className="w-3/10 flex-shrink-0 mr-1 sm:mr-2">
+                                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-white bg-gray-200">
+                                        <Image
+                                          src={
+                                            person.photoUrl ||
+                                            "/placeholder-user.jpg"
+                                          }
+                                          alt={person.name || "Avatar"}
+                                          width={48}
+                                          height={48}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                    </div>
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div
+                                        className="font-medium text-sm sm:text-base truncate"
+                                        style={{
+                                          direction: "rtl",
+                                          textAlign: "left",
+                                        }}
+                                      >
+                                        {person.name}
+                                      </div>
+                                      <div className="text-xs sm:text-sm text-gray-600 flex justify-between">
+                                        <span>
+                                          {person.gender === "M"
+                                            ? "Male"
+                                            : person.gender === "F"
+                                              ? "Female"
+                                              : "Other"}
+                                        </span>
+                                        <span className="text-gray-500">
+                                          Level {person.level}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                ) : (
                   <div className="text-center py-8 sm:py-12">
                     <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {levelFilter ? `Không có thành viên ở đời ${levelFilter}` : "No family members yet"}
+                      No person selected
                     </h3>
                     <p className="text-gray-600 mb-4">
-                      {levelFilter ? "Thử nhập số đời khác hoặc xóa bộ lọc." : "Start building your family tree by adding your first person."}
+                      Click on a person in the family tree to view their
+                      descendants.
                     </p>
-                    {!readOnly && !levelFilter && (
-                      <Button onClick={() => setShowAddPersonModal(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add First Person
-                      </Button>
-                    )}
                   </div>
                 )}
               </CardContent>
@@ -529,5 +655,5 @@ export default function FamilyTreeView({ chartId, readOnly = false }: FamilyTree
         </>
       )}
     </div>
-  )
+  );
 }
