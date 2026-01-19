@@ -538,7 +538,7 @@ export default function FamilyTreeView({
                                 {descendantsAtLevel.map((person) => (
                                   <div
                                     key={person.personId}
-                                    className="p-3 sm:p-4 rounded-lg border cursor-pointer hover:shadow-md transition-shadow flex w-full sm:w-[calc(50%-0.5rem)] md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-0.875rem)] xl:w-[calc(20%-1rem)]"
+                                    className="p-3 sm:p-4 rounded-lg border cursor-pointer hover:shadow-md transition-shadow flex w-[calc(50%-0.25rem)] sm:w-[calc(50%-0.5rem)] md:w-[calc(33.333%-0.75rem)] lg:w-[calc(25%-0.875rem)] xl:w-[calc(20%-1rem)]"
                                     style={{
                                       backgroundColor: getPersonColor(person),
                                     }}
