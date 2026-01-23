@@ -512,8 +512,7 @@ export default function FamilyTreeView({
                             No descendants found
                           </h3>
                           <p className="text-gray-600">
-                            {selectedPerson.name} has no descendants in the
-                            family tree.
+                            {selectedPerson.name} has no descendants in the family tree.
                           </p>
                         </div>
                       );
@@ -524,8 +523,7 @@ export default function FamilyTreeView({
                         {sortedLevels.map((relativeLevel) => {
                           const descendantsAtLevel =
                             descendantsByLevel.get(relativeLevel) || [];
-                          const generationLabel = `Generation ${relativeLevel - selectedPerson.level + 1}`;
-
+                          const generationLabel = `Generation ${relativeLevel}`;
                           return (
                             <div
                               key={relativeLevel}
