@@ -144,25 +144,6 @@ export default function FamilyTreeChart({ data, onNodeClick, focusedPerson, getP
       (node: any) => node.children.length === 0 && node.parents.length === 0
     )
 
-    // Constants for isolated nodes column
-    const isolatedColumnWidth = nodeWidth + 40
-    const isolatedColumnX = -(width - margin.left - margin.right) / 2 + isolatedColumnWidth / 2
-    const isolatedStartY = 60
-    const isolatedVerticalSpacing = nodeHeight + 15
-
-    // Position isolated nodes in a vertical column on the left
-    isolatedNodes.forEach((node: any, index) => {
-      const treeNode: TreeNode = {
-        id: node.id,
-        data: node,
-        children: [],
-        x: isolatedColumnX,
-        y: isolatedStartY + index * isolatedVerticalSpacing,
-        width: nodeWidth,
-      }
-      allNodes.push(treeNode)
-    })
-
     // Function to calculate subtree width
     function calculateSubtreeWidth(node: any): number {
       if (node.children.length === 0) {
@@ -232,8 +213,8 @@ export default function FamilyTreeChart({ data, onNodeClick, focusedPerson, getP
         totalRootWidth += rootWidth
       })
 
-      // Calculate the starting X position for the main tree
-      const mainTreeStartX = isolatedColumnWidth + 50 - totalRootWidth / 2
+      // Calculate the starting X position for the main tree (centered)
+      const mainTreeStartX = -totalRootWidth / 2
       
       // Position each root tree in the main area
       let currentX = mainTreeStartX
@@ -241,6 +222,41 @@ export default function FamilyTreeChart({ data, onNodeClick, focusedPerson, getP
         const rootWidth = rootWidths[index]
         positionSubtree(root, currentX + rootWidth / 2, 60, rootWidth)
         currentX += rootWidth
+      })
+    }
+
+    // Position isolated nodes in horizontal rows at the bottom
+    if (isolatedNodes.length > 0) {
+      // Find the maximum Y position from connected nodes
+      let maxY = 60 // Default starting Y if no connected nodes
+      if (allNodes.length > 0) {
+        maxY = Math.max(...allNodes.map((n: TreeNode) => n.y))
+      }
+
+      // Constants for isolated nodes rows
+      const isolatedStartY = maxY + levelHeight + 40 // Position below the main tree
+      const horizontalSpacing = nodeWidth + 30 // Spacing between nodes horizontally
+      const nodesPerRow = Math.floor((width - margin.left - margin.right - 100) / horizontalSpacing)
+      const rowSpacing = nodeHeight + 20 // Spacing between rows
+
+      isolatedNodes.forEach((node: any, index) => {
+        const row = Math.floor(index / nodesPerRow)
+        const col = index % nodesPerRow
+        
+        // Calculate total width of current row
+        const nodesInCurrentRow = Math.min(nodesPerRow, isolatedNodes.length - row * nodesPerRow)
+        const totalRowWidth = nodesInCurrentRow * horizontalSpacing
+        const startX = -totalRowWidth / 2 + horizontalSpacing / 2
+
+        const treeNode: TreeNode = {
+          id: node.id,
+          data: node,
+          children: [],
+          x: startX + col * horizontalSpacing,
+          y: isolatedStartY + row * rowSpacing,
+          width: nodeWidth,
+        }
+        allNodes.push(treeNode)
       })
     }
 
